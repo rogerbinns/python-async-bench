@@ -14,6 +14,7 @@ import anyio
 # modules used
 import queue
 import resource
+import functools
 import time
 import threading
 import sys
@@ -27,9 +28,9 @@ class AsyncIO:
         self.loop = asyncio.get_running_loop()
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
-    def send(self, call):
+    def send(self, func, *args, **kwargs):
         future = self.loop.create_future()
-        self.queue.put((future, call))
+        self.queue.put((future, functools.partial(func, *args, **kwargs)))
         return future
 
     def close(self):
@@ -79,8 +80,8 @@ class Trio:
         self.queue = queue.SimpleQueue()
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
-    def send(self, call):
-        future = Future(trio.lowlevel.current_trio_token(), trio.Event(), call)
+    def send(self, func, *args, **kwargs):
+        future = Future(trio.lowlevel.current_trio_token(), trio.Event(), functools.partial(func, *args, **kwargs))
         self.queue.put(future)
         return future
 
@@ -98,8 +99,8 @@ class AnyIO:
         self.queue = queue.SimpleQueue()
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
-    def send(self, call):
-        future = Future(anyio.lowlevel.current_token(), anyio.Event(), call)
+    def send(self, func, *args, **kwargs):
+        future = Future(anyio.lowlevel.current_token(), anyio.Event(), functools.partial(func, *args, **kwargs))
         self.queue.put(future)
         return future
 
@@ -150,17 +151,17 @@ def get_times():
     )
 
 
-async def actual_benchmark():
+async def dedicated_thread(count, func, *args, **kwargs):
+
     controller = Auto()
+
+    # check it works and don't include thread startup time
+    assert  7 == await controller.send(lambda x: x + 2, 5)
 
     start = get_times()
 
-    # this releases and reacquires the GIL emulating
-    # why you would need a dedicated worker thread
-    work = lambda: time.sleep(0)
-
-    for i in range(100_000):
-        await controller.send(work)
+    for i in range(count):
+        await controller.send(func, *args, **kwargs)
 
     end = get_times()
 
@@ -169,32 +170,72 @@ async def actual_benchmark():
     return start, end
 
 
-print(
-    f"{'Framework':>25s} {'Wall':>8s} {'CpuTotal':>10s} {'CpuEvtLoop':>12s} {'CpuWorker':>12s}"
-)
+async def to_thread(sender, count, func, *args, **kwargs):
+
+    # check it works and don't include thread startup time
+    assert  7 == await sender(lambda x: x + 2, 5)
+
+    start = get_times()
+
+    for i in range(count):
+        await sender(func, *args, **kwargs)
+
+    end = get_times()
+
+    return start, end
 
 
-def show(framework, start, end):
-    wall = end[0] - start[0]
-    cpu_total = end[1] - start[1]
-    cpu_async = end[2] - start[2]
-    cpu_worker = cpu_total - cpu_async
+
+def run_benchmark():
     print(
-        f"{framework:>25s} {wall:8.3f} {cpu_total:10.3f} {cpu_async:>12.3f} {cpu_worker:>12.3f}"
+        f"{'Framework':>30s} {'Wall':>8s} {'CpuTotal':>10s} {'CpuEvtLoop':>12s} {'CpuWorker':>12s}"
     )
 
 
-start, end = asyncio.run(actual_benchmark())
-show("asyncio", start, end)
-start, end = asyncio.run(actual_benchmark(), loop_factory=uvloop.new_event_loop)
-show("asyncio uvloop", start, end)
-start, end = trio.run(actual_benchmark)
-show("trio", start, end)
-start, end = anyio.run(actual_benchmark, backend="asyncio")
-show("anyio asyncio", start, end)
-start, end = anyio.run(actual_benchmark, backend="asyncio", backend_options={"use_uvloop": True})
-show("anyio asyncio uvloop", start, end)
-start, end = anyio.run(actual_benchmark, backend="trio")
-show("anyio trio", start, end)
+    def show(framework, start, end):
+        wall = end[0] - start[0]
+        cpu_total = end[1] - start[1]
+        cpu_async = end[2] - start[2]
+        cpu_worker = cpu_total - cpu_async
+        print(
+            f"{framework:>30s} {wall:8.3f} {cpu_total:10.3f} {cpu_async:>12.3f} {cpu_worker:>12.3f}"
+        )
 
+    start, end = asyncio.run(dedicated_thread(COUNT, *WORK))
+    show("asyncio", start, end)
+    start, end = asyncio.run(dedicated_thread(COUNT, *WORK), loop_factory=uvloop.new_event_loop)
+    show("asyncio uvloop", start, end)
+    start, end = trio.run(dedicated_thread, COUNT, *WORK)
+    show("trio", start, end)
+    start, end = anyio.run(dedicated_thread, COUNT, *WORK, backend="asyncio")
+    show("anyio asyncio", start, end)
+    start, end = anyio.run(dedicated_thread, COUNT, *WORK, backend="asyncio", backend_options={"use_uvloop": True})
+    show("anyio asyncio uvloop", start, end)
+    start, end = anyio.run(dedicated_thread, COUNT, *WORK, backend="trio")
+    show("anyio trio", start, end)
 
+    start, end = asyncio.run(to_thread(asyncio.to_thread, COUNT, *WORK))
+    show("asyncio to_thread", start, end)
+    start, end = asyncio.run(to_thread(asyncio.to_thread, COUNT, *WORK), loop_factory=uvloop.new_event_loop)
+    show("asyncio uvloop to_thread", start, end)
+    start, end = trio.run(to_thread, trio.to_thread.run_sync, COUNT, *WORK)
+    show("trio to_thread", start, end)
+    start, end = anyio.run(to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="asyncio")
+    show("anyio asyncio to_thread", start, end)
+    start, end = anyio.run(to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="asyncio", backend_options={"use_uvloop": True})
+    show("anyio asyncio uvloop to_thread", start, end)
+    start, end = anyio.run(to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="trio")
+    show("anyio trio to_thread", start, end)
+
+### How many messages are sent
+COUNT = 250_000
+
+### What work to do in the thread
+
+# this releases and reacquires the GIL
+# WORK = (time.sleep, 0)
+
+# this just returns zero
+WORK = (lambda: 0,)
+
+run_benchmark()
