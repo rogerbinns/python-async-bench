@@ -23,6 +23,8 @@ the full implementation and this abbreviated one.
 Running
 =======
 
+This only runs on a Linux like platform.
+
 .. code-block:: console
 
     $ git clone https://github.com/rogerbinns/python-async-bench.git
