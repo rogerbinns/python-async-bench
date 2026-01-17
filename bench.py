@@ -85,7 +85,11 @@ class Trio:
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
     def send(self, func, *args, **kwargs):
-        future = Future(trio.lowlevel.current_trio_token(), trio.Event(), functools.partial(func, *args, **kwargs))
+        future = Future(
+            trio.lowlevel.current_trio_token(),
+            trio.Event(),
+            functools.partial(func, *args, **kwargs),
+        )
         self.queue.put(future)
         return future
 
@@ -104,7 +108,11 @@ class AnyIO:
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
     def send(self, func, *args, **kwargs):
-        future = Future(anyio.lowlevel.current_token(), anyio.Event(), functools.partial(func, *args, **kwargs))
+        future = Future(
+            anyio.lowlevel.current_token(),
+            anyio.Event(),
+            functools.partial(func, *args, **kwargs),
+        )
         self.queue.put(future)
         return future
 
@@ -165,7 +173,7 @@ async def dedicated_thread(count, func, *args, **kwargs):
     controller = Auto()
 
     # check it works and don't include thread startup time
-    assert  7 == await controller.send(lambda x: x + 2, 5)
+    assert 7 == await controller.send(lambda x: x + 2, 5)
 
     start = get_times()
 
@@ -180,9 +188,8 @@ async def dedicated_thread(count, func, *args, **kwargs):
 
 
 async def to_thread(sender, count, func, *args, **kwargs):
-
     # check it works and don't include thread startup time
-    assert  7 == await sender(lambda x: x + 2, 5)
+    assert 7 == await sender(lambda x: x + 2, 5)
 
     start = get_times()
 
@@ -194,12 +201,10 @@ async def to_thread(sender, count, func, *args, **kwargs):
     return start, end
 
 
-
 def run_benchmark():
     print(
         f"{'Framework':>30s} {'Wall':>8s} {'CpuTotal':>10s} {'CpuEvtLoop':>12s} {'CpuWorker':>12s}"
     )
-
 
     def show(framework, start, end):
         wall = end[0] - start[0]
@@ -261,6 +266,7 @@ def run_benchmark():
         to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="trio"
     )
     show("anyio trio to_thread", start, end)
+
 
 ### How many messages are sent
 COUNT = 250_000
