@@ -7,9 +7,13 @@ from the event loop to a dedicated worker thread and back again
 
 # what we benchmark
 import asyncio
-import uvloop
 import trio
 import anyio
+
+try:
+    import uvloop
+except ImportError:
+    uvloop = None
 
 # modules used
 import queue
@@ -142,17 +146,22 @@ def Auto():
     raise RuntimeError("Unable to determine current Async framework")
 
 
-def get_times():
-    # returns wall time, all cpu time, and foreground thread only
-    return (
-        time.monotonic(),
-        time.process_time(),
-        resource.getrusage(resource.RUSAGE_THREAD).ru_utime,
-    )
+if sys.implementation.name != "pypy":
+
+    def get_times():
+        # returns wall time, all cpu time, and foreground thread only
+        return (
+            time.monotonic(),
+            time.process_time(),
+            resource.getrusage(resource.RUSAGE_THREAD).ru_utime,
+        )
+else:
+
+    def get_times():
+        return (time.monotonic(), time.process_time(), time.process_time())
 
 
 async def dedicated_thread(count, func, *args, **kwargs):
-
     controller = Auto()
 
     # check it works and don't include thread startup time
@@ -203,28 +212,54 @@ def run_benchmark():
 
     start, end = asyncio.run(dedicated_thread(COUNT, *WORK))
     show("asyncio", start, end)
-    start, end = asyncio.run(dedicated_thread(COUNT, *WORK), loop_factory=uvloop.new_event_loop)
-    show("asyncio uvloop", start, end)
+    if uvloop:
+        start, end = asyncio.run(
+            dedicated_thread(COUNT, *WORK), loop_factory=uvloop.new_event_loop
+        )
+        show("asyncio uvloop", start, end)
     start, end = trio.run(dedicated_thread, COUNT, *WORK)
     show("trio", start, end)
     start, end = anyio.run(dedicated_thread, COUNT, *WORK, backend="asyncio")
     show("anyio asyncio", start, end)
-    start, end = anyio.run(dedicated_thread, COUNT, *WORK, backend="asyncio", backend_options={"use_uvloop": True})
-    show("anyio asyncio uvloop", start, end)
+    if uvloop:
+        start, end = anyio.run(
+            dedicated_thread,
+            COUNT,
+            *WORK,
+            backend="asyncio",
+            backend_options={"use_uvloop": True},
+        )
+        show("anyio asyncio uvloop", start, end)
     start, end = anyio.run(dedicated_thread, COUNT, *WORK, backend="trio")
     show("anyio trio", start, end)
 
     start, end = asyncio.run(to_thread(asyncio.to_thread, COUNT, *WORK))
     show("asyncio to_thread", start, end)
-    start, end = asyncio.run(to_thread(asyncio.to_thread, COUNT, *WORK), loop_factory=uvloop.new_event_loop)
-    show("asyncio uvloop to_thread", start, end)
+    if uvloop:
+        start, end = asyncio.run(
+            to_thread(asyncio.to_thread, COUNT, *WORK),
+            loop_factory=uvloop.new_event_loop,
+        )
+        show("asyncio uvloop to_thread", start, end)
     start, end = trio.run(to_thread, trio.to_thread.run_sync, COUNT, *WORK)
     show("trio to_thread", start, end)
-    start, end = anyio.run(to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="asyncio")
+    start, end = anyio.run(
+        to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="asyncio"
+    )
     show("anyio asyncio to_thread", start, end)
-    start, end = anyio.run(to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="asyncio", backend_options={"use_uvloop": True})
-    show("anyio asyncio uvloop to_thread", start, end)
-    start, end = anyio.run(to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="trio")
+    if uvloop:
+        start, end = anyio.run(
+            to_thread,
+            anyio.to_thread.run_sync,
+            COUNT,
+            *WORK,
+            backend="asyncio",
+            backend_options={"use_uvloop": True},
+        )
+        show("anyio asyncio uvloop to_thread", start, end)
+    start, end = anyio.run(
+        to_thread, anyio.to_thread.run_sync, COUNT, *WORK, backend="trio"
+    )
     show("anyio trio to_thread", start, end)
 
 ### How many messages are sent

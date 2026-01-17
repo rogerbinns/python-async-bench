@@ -23,7 +23,7 @@ the full implementation and this abbreviated one.
 Running
 =======
 
-This only runs on a Linux like platform.
+This only runs on a Linux like platform.  ``uvloop`` is optional.
 
 .. code-block:: console
 
@@ -127,3 +127,9 @@ returned zero.
  anyio asyncio uvloop to_thread    8.630      9.136        5.772        3.364
            anyio trio to_thread   17.083     18.124       11.202        6.922
 
+PyPY
+====
+
+PyPY doesn't provide the information necessary to distinguish between
+event loop thread and worker thread CPU consumption, so it is all
+shown as event loop.
