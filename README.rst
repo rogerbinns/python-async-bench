@@ -3,9 +3,13 @@
 Purpose
 =======
 
+This is measuring the overhead of sending calls from the async
+environment into a sync environment for execution and awaitable
+response.  Finding ways of reducing that overhead will be nice.
+
 When using a Python async framework, there are situations where
-synchronous code needs to be run in a background thread.     If you do
-not need the same thread for each call, then the async  frameworks
+synchronous code needs to be run in a background thread.  If you do
+not need the same thread for each call, then the async frameworks
 provide that functionality such as `asyncio.to_thread
 <https://docs.python.org/3/library/asyncio-task.html#asyncio.to_thread>`__
 and `trio.to_thread.run_sync
