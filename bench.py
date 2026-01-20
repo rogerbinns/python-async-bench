@@ -56,8 +56,6 @@ class AsyncIO:
 
 class Future:
     __slots__ = (
-        # needed to call back into trio/anyio
-        "token",
         # Event used to signal ready
         "event",
         # result value
@@ -66,8 +64,7 @@ class Future:
         "call",
     )
 
-    def __init__(self, token, event, call):
-        self.token = token
+    def __init__(self, event, call):
         self.event = event
         self.call = call
 
@@ -82,11 +79,11 @@ class Future:
 class Trio:
     def __init__(self):
         self.queue = queue.SimpleQueue()
+        self.token = trio.lowlevel.current_trio_token()
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
     def send(self, func, *args, **kwargs):
         future = Future(
-            trio.lowlevel.current_trio_token(),
             trio.Event(),
             functools.partial(func, *args, **kwargs),
         )
@@ -99,17 +96,17 @@ class Trio:
     def worker_thread_run(self, q):
         while (future := q.get()) is not None:
             future.result = future.call()
-            future.token.run_sync_soon(future.event.set)
+            self.token.run_sync_soon(future.event.set)
 
 
 class AnyIO:
     def __init__(self):
         self.queue = queue.SimpleQueue()
+        self.token = anyio.lowlevel.current_token()
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
     def send(self, func, *args, **kwargs):
         future = Future(
-            anyio.lowlevel.current_token(),
             anyio.Event(),
             functools.partial(func, *args, **kwargs),
         )
@@ -122,7 +119,7 @@ class AnyIO:
     def worker_thread_run(self, q):
         while (future := q.get()) is not None:
             future.result = future.call()
-            anyio.from_thread.run_sync(future.event.set, token=future.token)
+            anyio.from_thread.run_sync(future.event.set, token=self.token)
 
 
 def Auto():
