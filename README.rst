@@ -118,18 +118,19 @@ returned zero.
 .. code-block:: console
 
                       Framework     Wall   CpuTotal   CpuEvtLoop    CpuWorker
-                        asyncio    4.951      5.131        2.207        2.923
-                 asyncio uvloop    3.311      3.388        1.073        2.314
-                           trio    8.074      9.039        5.540        3.498
-                  anyio asyncio   11.133     13.315        5.537        7.778
-           anyio asyncio uvloop    6.854      7.773        2.785        4.988
-                     anyio trio   12.390     14.400        7.436        6.964
-              asyncio to_thread   10.141     11.659        6.013        5.646
-       asyncio uvloop to_thread    8.587      9.754        5.150        4.604
-                 trio to_thread   15.629     16.665       10.603        6.063
-        anyio asyncio to_thread   13.003     13.670        9.358        4.312
- anyio asyncio uvloop to_thread    8.630      9.136        5.772        3.364
-           anyio trio to_thread   17.083     18.124       11.202        6.922
+                        asyncio    4.964      5.204        2.187        3.017
+                 asyncio uvloop    3.537      3.647        1.095        2.552
+                           trio    7.837      8.744        5.406        3.338
+                  anyio asyncio   10.101     12.352        4.889        7.463
+           anyio asyncio uvloop    6.134      7.292        2.312        4.979
+                     anyio trio   11.246     13.600        6.724        6.876
+              asyncio to_thread    9.606     11.039        5.519        5.520
+       asyncio uvloop to_thread    7.955      9.128        4.338        4.789
+                 trio to_thread   15.310     16.343       10.602        5.741
+        anyio asyncio to_thread   12.961     13.755        9.737        4.018
+ anyio asyncio uvloop to_thread    9.002      9.594        6.214        3.380
+           anyio trio to_thread   16.266     17.586       11.241        6.345
+
 
 PyPY
 ====

@@ -32,10 +32,11 @@ class AsyncIO:
         self.loop = asyncio.get_running_loop()
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
-    def send(self, func, *args, **kwargs):
+    async def send(self, func, *args, **kwargs):
         future = self.loop.create_future()
         self.queue.put((future, functools.partial(func, *args, **kwargs)))
-        return future
+        await future
+        return future.result()
 
     def close(self):
         self.queue.put(None)
@@ -68,13 +69,6 @@ class Future:
         self.event = event
         self.call = call
 
-    async def aresult(self):
-        await self.event.wait()
-        return self.result
-
-    def __await__(self):
-        return self.aresult().__await__()
-
 
 class Trio:
     def __init__(self):
@@ -82,13 +76,14 @@ class Trio:
         self.token = trio.lowlevel.current_trio_token()
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
-    def send(self, func, *args, **kwargs):
+    async def send(self, func, *args, **kwargs):
         future = Future(
             trio.Event(),
             functools.partial(func, *args, **kwargs),
         )
         self.queue.put(future)
-        return future
+        await future.event.wait()
+        return future.result
 
     def close(self):
         self.queue.put(None)
@@ -105,13 +100,14 @@ class AnyIO:
         self.token = anyio.lowlevel.current_token()
         threading.Thread(target=self.worker_thread_run, args=(self.queue,)).start()
 
-    def send(self, func, *args, **kwargs):
+    async def send(self, func, *args, **kwargs):
         future = Future(
             anyio.Event(),
             functools.partial(func, *args, **kwargs),
         )
         self.queue.put(future)
-        return future
+        await future.event.wait()
+        return future.result
 
     def close(self):
         self.queue.put(None)
