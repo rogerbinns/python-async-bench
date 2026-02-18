@@ -78,7 +78,7 @@ constantly balancing performance, work, and energy consumption.
 Framework
 
     Shows what was run.  If it ends with ``to_thread`` then the
-    framework method to send to any thread is used, otherwise a
+    framework method to send to a thread pool is used, otherwise a
     dedicated worker thread is used.
 
     `asyncio <https://docs.python.org/3/library/asyncio.html>`__ is
@@ -117,19 +117,19 @@ returned zero.
 
 .. code-block:: console
 
-                      Framework     Wall   CpuTotal   CpuEvtLoop    CpuWorker
-                        asyncio    4.964      5.204        2.187        3.017
-                 asyncio uvloop    3.537      3.647        1.095        2.552
-                           trio    7.837      8.744        5.406        3.338
-                  anyio asyncio   10.101     12.352        4.889        7.463
-           anyio asyncio uvloop    6.134      7.292        2.312        4.979
-                     anyio trio   11.246     13.600        6.724        6.876
-              asyncio to_thread    9.606     11.039        5.519        5.520
-       asyncio uvloop to_thread    7.955      9.128        4.338        4.789
-                 trio to_thread   15.310     16.343       10.602        5.741
-        anyio asyncio to_thread   12.961     13.755        9.737        4.018
- anyio asyncio uvloop to_thread    9.002      9.594        6.214        3.380
-           anyio trio to_thread   16.266     17.586       11.241        6.345
+                         Framework     Wall   CpuTotal   CpuEvtLoop    CpuWorker
+                           asyncio    5.884      6.132        2.744        3.388
+                    asyncio uvloop    3.470      3.648        1.155        2.493
+                              trio    8.256      9.280        5.760        3.520
+                     anyio asyncio   11.528     13.893        5.812        8.080
+              anyio asyncio uvloop    6.454      7.630        2.555        5.075
+                        anyio trio   12.171     14.555        7.529        7.026
+                 asyncio to_thread   10.683     12.326        6.651        5.675
+          asyncio uvloop to_thread    9.090     10.548        5.244        5.303
+                    trio to_thread   16.837     18.245       11.642        6.603
+           anyio asyncio to_thread   14.282     15.160       10.532        4.628
+    anyio asyncio uvloop to_thread    9.577     10.326        6.723        3.603
+              anyio trio to_thread   18.036     19.437       12.271        7.166
 
 
 PyPY
